@@ -1,70 +1,55 @@
 import { useState, useEffect } from 'react';
 import './App.css';
 import FormularioAlumno from './components/FormularioAlumno';
+import ListaAlumnos from './components/ListaAlumnos';
+import {
+  obtenerAlumnos,
+  agregarAlumno,
+  actualizarAlumno,
+  eliminarAlumno
+} from './services/api';
 
 function App() {
   const [alumnos, setAlumnos] = useState([]);
   const [alumnoEdit, setAlumnoEdit] = useState(null);
 
-  const API_URL = 'http://localhost:3000/api/alumnos';
-
-  // Obtenerlos alumnos 
+  // Obtener alumnos al iniciar
   useEffect(() => {
-    obtenerAlumnos();
+    cargarAlumnos();
   }, []);
 
-  const obtenerAlumnos = async () => {
+  const cargarAlumnos = async () => {
     try {
-      const res = await fetch(API_URL);
-      const data = await res.json();
-      setAlumnos(data);
+      const res = await obtenerAlumnos();
+      setAlumnos(res.data);
     } catch (error) {
       console.error('Error al obtener alumnos:', error);
     }
   };
 
-  // Agregar o actualizar
-  const agregarAlumno = async (nuevoAlumno) => {
+  // Agregar o actualizar alumno
+  const manejarGuardar = async (alumno) => {
     try {
       if (alumnoEdit) {
-        // Modo edición
-        const res = await fetch(`${API_URL}/${alumnoEdit.id_alumno}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(nuevoAlumno),
-        });
-        if (!res.ok) throw new Error('Error al actualizar alumno');
+        await actualizarAlumno(alumnoEdit.id_alumno, alumno);
       } else {
-        // Nuevo registro
-        const res = await fetch(API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(nuevoAlumno),
-        });
-        if (!res.ok) throw new Error('Error al registrar alumno');
+        await agregarAlumno(alumno);
       }
-
       setAlumnoEdit(null);
-      obtenerAlumnos(); // Recargar lista
+      cargarAlumnos();
     } catch (error) {
-      console.error(error.message);
+      console.error('Error al guardar alumno:', error);
     }
   };
 
-  // Editar alumno
-  const editarAlumno = (alumno) => {
-    setAlumnoEdit(alumno);
-  };
-
-  //Eliminar alumno
-  const eliminarAlumno = async (id_alumno) => {
+  // Eliminar alumno
+  const manejarEliminar = async (id) => {
     if (!window.confirm('¿Seguro que quieres eliminar este alumno?')) return;
     try {
-      const res = await fetch(`${API_URL}/${id_alumno}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Error al eliminar alumno');
-      obtenerAlumnos();
+      await eliminarAlumno(id);
+      cargarAlumnos();
     } catch (error) {
-      console.error(error.message);
+      console.error('Error al eliminar alumno:', error);
     }
   };
 
@@ -73,7 +58,7 @@ function App() {
       <h1>Registro de Alumnos</h1>
 
       <FormularioAlumno
-        agregarAlumno={agregarAlumno}
+        agregarAlumno={manejarGuardar}
         alumnoEdit={alumnoEdit}
         cancelarEdicion={() => setAlumnoEdit(null)}
       />
@@ -82,53 +67,14 @@ function App() {
       {alumnos.length === 0 ? (
         <p>No hay alumnos registrados.</p>
       ) : (
-        <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "1rem" }}>
-          <thead>
-            <tr>
-              <th style={thStyle}>Nombre</th>
-              <th style={thStyle}>Email</th>
-              <th style={thStyle}>Curso</th>
-              <th style={thStyle}>Sexo</th>
-              <th style={thStyle}>Habla Inglés</th>
-              <th style={thStyle}>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {alumnos.map((alumno) => (
-              <tr key={alumno.id_alumno}>
-                <td style={tdStyle}>{alumno.nombre_alumno}</td>
-                <td style={tdStyle}>{alumno.email_alumno}</td>
-                <td style={tdStyle}>{alumno.curso_alumno}</td>
-                <td style={tdStyle}>{alumno.sexo_alumno}</td>
-                <td style={tdStyle}>{alumno.habla_ingles ? "Sí" : "No"}</td>
-                <td style={tdStyle}>
-                  <button style={btnStyle} onClick={() => editarAlumno(alumno)}>Editar</button>
-                  <button
-                    style={{ ...btnStyle, backgroundColor: "#dc3545" }}
-                    onClick={() => eliminarAlumno(alumno.id_alumno)}
-                  >
-                    Eliminar
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <ListaAlumnos
+          alumnos={alumnos}
+          onEditar={setAlumnoEdit}
+          onEliminar={manejarEliminar}
+        />
       )}
     </div>
   );
 }
-
-const thStyle = { border: "1px solid #ccc", padding: "8px", backgroundColor: "#007BFF", color: "#fff" };
-const tdStyle = { border: "1px solid #ccc", padding: "8px" };
-const btnStyle = {
-  marginRight: "5px",
-  padding: "5px 10px",
-  border: "none",
-  borderRadius: "5px",
-  cursor: "pointer",
-  backgroundColor: "#007BFF",
-  color: "#fff"
-};
 
 export default App;
